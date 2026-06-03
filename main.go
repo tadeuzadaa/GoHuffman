@@ -1,11 +1,13 @@
 package main
 
 import (
-    
-	"fmt"
-    "os"
 	"bufio"
-    
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"go-huffman/decoder"
 	"go-huffman/encoder"
 	"go-huffman/frequency"
@@ -14,24 +16,43 @@ import (
 	"go-huffman/utils"
 )
 
+const quitCommand = ":q"
+
 func main() {
-
-    fmt.Println("================================")
-	fmt.Println(" DEMONSTRAÇÃO DO CÓDIGO HUFFMAN")
-	fmt.Println("================================")
-
-    fmt.Println()
-
-    // entrada do usuário
 	reader := bufio.NewReader(os.Stdin)
 
-	fmt.Print("Digite um texto: ")
+	for {
+		clearConsole()
+		printHeader()
 
-	text, _ := reader.ReadString('\n')
+		text, err := readInput(reader, "Digite um texto")
+		if err != nil {
+			fmt.Printf("Erro ao ler entrada: %v\n", err)
+			return
+		}
+		if text == quitCommand {
+			fmt.Println("Encerrando programa.")
+			return
+		}
+		if text == "" {
+			fmt.Println("Entrada vazia. Informe um texto para codificar.")
+			if !waitNextAction(reader) {
+				fmt.Println("Encerrando programa.")
+				return
+			}
+			continue
+		}
 
-	// remove quebra de linha
-	text = text[:len(text)-1]
+		runDemo(text)
 
+		if !waitNextAction(reader) {
+			fmt.Println("Encerrando programa.")
+			return
+		}
+	}
+}
+
+func runDemo(text string) {
 	fmt.Println()
 
 	// frequências
@@ -47,6 +68,10 @@ func main() {
 
 	// árvore
 	root := tree.BuildTree(freq)
+	if root == nil {
+		fmt.Println("Não foi possível montar a árvore de Huffman.")
+		return
+	}
 
 	fmt.Println("===== ÁRVORE =====")
 
@@ -97,8 +122,8 @@ func main() {
 
 	// estatísticas
 	originalBits,
-	compressedBits,
-	economy := stats.Calculate(
+		compressedBits,
+		economy := stats.Calculate(
 		text,
 		encoded,
 	)
@@ -119,4 +144,56 @@ func main() {
 		"Economia: %.2f%%\n",
 		economy,
 	)
-}    
+}
+
+func readInput(reader *bufio.Reader, label string) (string, error) {
+	fmt.Printf("%s (ou %s para sair): ", label, quitCommand)
+	text, err := reader.ReadString('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+
+	text = strings.TrimSpace(text)
+
+	if errors.Is(err, io.EOF) && text == "" {
+		return quitCommand, nil
+	}
+
+	return text, nil
+}
+
+func waitNextAction(reader *bufio.Reader) bool {
+	for {
+		fmt.Printf("\nPressione Enter para novo texto ou digite %s para sair: ", quitCommand)
+		next, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			fmt.Printf("\nErro ao ler entrada: %v\n", err)
+			return false
+		}
+
+		next = strings.TrimSpace(next)
+		if next == "" {
+			return true
+		}
+		if next == quitCommand {
+			return false
+		}
+
+		fmt.Printf("Opção inválida: %q\n", next)
+
+		if errors.Is(err, io.EOF) {
+			return false
+		}
+	}
+}
+
+func printHeader() {
+	fmt.Println("================================")
+	fmt.Println(" DEMONSTRAÇÃO DO CÓDIGO HUFFMAN")
+	fmt.Println("================================")
+	fmt.Println()
+}
+
+func clearConsole() {
+	fmt.Print("\033[H\033[2J")
+}

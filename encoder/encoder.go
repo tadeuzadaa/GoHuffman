@@ -1,18 +1,25 @@
 package encoder
 
-import "go-huffman/model"
+import (
+	"strings"
+
+	"go-huffman/model"
+)
 
 func GenerateCodes(
 	node *model.Node,
 	prefix string,
 	codes map[rune]string,
-){
-	if node == nil{
+) {
+	if node == nil {
 		return
 	}
 
 	// encontrou caractere
-	if node.IsLeaf(){
+	if node.IsLeaf() {
+		if prefix == "" {
+			prefix = "0"
+		}
 		codes[node.Char] = prefix
 		return
 	}
@@ -26,19 +33,19 @@ func GenerateCodes(
 
 	// direita recebe 1
 	GenerateCodes(
-		node.Left,
+		node.Right,
 		prefix+"1",
 		codes,
 	)
-	
+
 }
 
-func Encode(text string, codes map[rune]string) string{
-	encoded := ""
+func Encode(text string, codes map[rune]string) string {
+	var encoded strings.Builder
 
 	for _, char := range text {
-		encoded += codes[char]
+		encoded.WriteString(codes[char])
 	}
 
-	return  encoded
+	return encoded.String()
 }
